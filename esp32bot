@@ -1,0 +1,67 @@
+#include <WiFi.h>
+#include <UniversalTelegramBot.h>
+#include <WiFiClientSecure.h>
+
+// Wi-Fi
+const char* ssid = "";
+const char* password = "";
+
+// Telegram-bot token from @BotFather
+const char* BOT_TOKEN = "";
+
+// Create client for Telegram
+WiFiClientSecure client;
+UniversalTelegramBot bot(BOT_TOKEN, client);
+
+unsigned long lastTimeChecked = 0;
+const unsigned long delayTime = 1000;  // each 1 second
+
+void setup() {
+  Serial.begin(115200);
+  
+  // Connecting to Wi-Fi
+  WiFi.begin(ssid, password);
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(1000);
+    Serial.println("Connecting to WiFi...");
+  }
+  Serial.println("Connected to WiFi");
+  
+  // Set up the client for working with Telegram
+  client.setCACert(TELEGRAM_CERTIFICATE_ROOT);  // Set certificate for secure connection
+}
+
+void handleNewMessages(int numNewMessages) {
+  Serial.println("New message received");
+
+  for (int i = 0; i < numNewMessages; i++) {
+    String chat_id = String(bot.messages[i].chat_id);
+    String text = bot.messages[i].text;
+    String from_name = bot.messages[i].from_name;
+
+    Serial.print("Message from ");
+    Serial.print(from_name);
+    Serial.print(": ");
+    Serial.println(text);
+
+    if (text == "/start") {
+      bot.sendMessage(chat_id, "Welcome! I am your ESP32 Telegram bot.", "");
+    } else if (text == "/status") {
+      bot.sendMessage(chat_id, "ESP32 is connected and operational!", "");
+    } else {
+      bot.sendMessage(chat_id, "Sorry, I don't understand that command.", "");
+    }
+  }
+}
+
+void loop() {
+  if (millis() - lastTimeChecked > delayTime) {
+    int numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+
+    while(numNewMessages) {
+      handleNewMessages(numNewMessages);
+      numNewMessages = bot.getUpdates(bot.last_message_received + 1);
+    }
+    lastTimeChecked = millis();
+  }
+}
